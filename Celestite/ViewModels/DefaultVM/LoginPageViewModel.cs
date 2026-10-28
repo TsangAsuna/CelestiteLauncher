@@ -156,7 +156,11 @@ namespace Celestite.ViewModels.DefaultVM
                 var requestOp = await Request(viewModel.Email, viewModel.Password, viewModel.SaveEmail, viewModel.SavePassword, viewModel.AutoLogin);
                 if (requestOp.Failed)
                 {
-                    SetLoginErrorStatus(requestOp.Error!);
+                    // DMM 已更新客户端认证校验（E210002），旧 OAuth 凭据失效时引导使用一键登录
+                    if (requestOp.Error?.Code == "E210002")
+                        SetLoginErrorStatus(Localization.PasswordLoginBlockedByClientAuth);
+                    else
+                        SetLoginErrorStatus(requestOp.Error!);
                 }
                 else
                 {
@@ -204,6 +208,35 @@ namespace Celestite.ViewModels.DefaultVM
             {
                 try
                 {
+                    // 源 0（最优）：CDP 从运行中的 DMMGamePlayer 直接读明文会话 cookie，
+                    // 需要其以 --remote-debugging-port 启动；未带参时自动带参重启一次
+                    if (!await CdpHelper.IsDebugPortAlive())
+                    {
+                        var restarted = await RestartDgpWithDebugPortAsync();
+                        if (restarted)
+                        {
+                            for (var i = 0; i < 20 && !await CdpHelper.IsDebugPortAlive(); i++)
+                                await UniTask.Delay(500);
+                        }
+                    }
+
+                    if (await CdpHelper.IsDebugPortAlive())
+                    {
+                        var cookies = await CdpHelper.GetAllCookiesAsync();
+                        var (secureId, sessionId) = CdpHelper.ExtractDmmSession(cookies);
+                        if (!string.IsNullOrEmpty(secureId) && !string.IsNullOrEmpty(sessionId))
+                        {
+                            DmmGamePlayerApiHelper.SetUserCookies(secureId, sessionId);
+                            DmmGamePlayerApiHelper.SetAgeCheckDone();
+
+                            ConfigUtils.ClearLastLogin();
+                            await ProcessUser();
+                            SetDefaultStatus();
+                            return;
+                        }
+                        // CDP 连上了但没有 DMM 会话：用户未在 DGP 中登录，继续尝试本地文件源
+                    }
+
                     await using var sqlConnection = ConfigUtils.OpenDgpCookiesConnectionCopy(cookiesCopy);
                     var version = Meta.GetMeta(sqlConnection, "version");
                     var newFormat = version != null && version.Value >= 24;
@@ -286,6 +319,53 @@ namespace Celestite.ViewModels.DefaultVM
                     ConfigUtils.CleanupDgpCookiesCopy();
                 }
             }).Forget();
+        }
+
+        /// <summary>
+        /// 以 --remote-debugging-port 重启 DMMGamePlayer 以便 CDP 读取会话。
+        /// 返回是否成功发出重启。
+        /// </summary>
+        private async UniTask<bool> RestartDgpWithDebugPortAsync()
+        {
+            try
+            {
+                var processes = System.Diagnostics.Process.GetProcessesByName("DMMGamePlayer");
+                string? exePath = null;
+                foreach (var p in processes)
+                {
+                    try { exePath ??= p.MainModule?.FileName; } catch { /* 权限不足忽略 */ }
+                    try
+                    {
+                        if (!p.CloseMainWindow())
+                            p.Kill(true);
+                    }
+                    catch { /* 已退出 */ }
+                }
+                foreach (var p in processes)
+                {
+                    try { p.WaitForExit(5000); p.Dispose(); } catch { }
+                }
+
+                if (string.IsNullOrEmpty(exePath) || !System.IO.File.Exists(exePath))
+                {
+                    _logger.Warn("DMMGamePlayer.exe path not found for CDP restart");
+                    return false;
+                }
+
+                await UniTask.SwitchToThreadPool();
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exePath)
+                {
+                    Arguments = $"--remote-debugging-port={CdpHelper.Port}",
+                    UseShellExecute = true
+                });
+                _logger.Info("DMMGamePlayer restarted with remote debugging port");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn($"restart DMMGamePlayer with debug port failed: {ex.Message}");
+                return false;
+            }
         }
 
         private static bool ConvertEncryptedKeyBase64(string base64, out byte[] result)

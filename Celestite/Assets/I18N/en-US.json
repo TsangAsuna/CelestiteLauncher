@@ -220,7 +220,8 @@
   "UnsupportedSystemError": "This feature is only supported on Windows systems",
   "LoggedUserNotFoundError": "No logged-in state found on DMMGamePlayer",
   "DgpCookiesCopyFailed": "Unable to read DMMGamePlayer Cookies database (copy failed). Please make sure DMMGamePlayer is installed",
-  "DgpLoginStateNotFound": "No login credentials detected in DMMGamePlayer. New versions of DMMGamePlayer no longer store password-free login credentials. Please log in to Celestite directly with your email and password (auto-login will be available afterwards)",
+  "DgpLoginStateNotFound": "No login credentials detected in DMMGamePlayer. Please log in to DMMGamePlayer once, then use one-click login",
+  "PasswordLoginBlockedByClientAuth": "DMM has updated its client authentication (E210002); email/password login is temporarily unavailable. Please use One-click login to read the DMMGamePlayer login state",
   "DmmLoginLocationNotFound": "Login failed, credentials may be invalid",
   "MITMDetected": "Detected a potential TLS man-in-the-middle attack, the network is not secure",
 

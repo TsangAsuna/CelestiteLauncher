@@ -220,7 +220,8 @@
   "UnsupportedSystemError": "该功能只支持Windows系统",
   "LoggedUserNotFoundError": "未在DMMGamePlayer上找到已经登录的状态",
   "DgpCookiesCopyFailed": "无法读取DMMGamePlayer的Cookies数据库（复制失败），请确认DMMGamePlayer已安装",
-  "DgpLoginStateNotFound": "DMMGamePlayer中未检测到登录凭据。新版DMMGamePlayer不再保存免密登录凭据，请直接使用账号密码登录Celestite（登录一次后即可自动登录）",
+  "DgpLoginStateNotFound": "DMMGamePlayer中未检测到登录凭据。请先在DMMGamePlayer中登录一次，然后再使用一键登录",
+  "PasswordLoginBlockedByClientAuth": "DMM已更新客户端认证校验（E210002），账号密码登录暂不可用。请使用「一键登录」读取DMMGamePlayer的登录态",
   "DmmLoginLocationNotFound": "登录失败，凭据可能无效",
   "MITMDetected": "检测到潜在的TLS中间人攻击，网络不安全",
 
