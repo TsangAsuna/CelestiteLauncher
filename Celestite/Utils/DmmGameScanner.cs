@@ -202,9 +202,9 @@ namespace Celestite.Utils
         }
 
         /// <summary>
-        * 从目录名提取可能的 DMM ProductId。
-        * DMM 游戏 ID 通常形如 app_123456，或纯英文 ID。
-        * 这里保守处理：只要目录名不是明显的系统目录，就作为候选。
+        /// 从目录名提取可能的 DMM ProductId。
+        /// DMM 游戏 ID 通常形如 app_123456，或纯英文 ID。
+        /// 这里保守处理：只要目录名不是明显的系统目录，就作为候选。
         /// </summary>
         private static string? ExtractPossibleProductId(string dirName)
         {
