@@ -29,3 +29,35 @@
 * ```--productId <productId> --type <type>``` 要求 **Celestite** 直接启动某个游戏。如果 **Celestite** 未在后台运行，那么启动指令将会在登录成功后开始执行；反之，启动指令将会被传递给正在运行的 **Celestite** 实例执行。
 ### 示例
 * ```Celestite.Desktop.exe --nogui --username example@example.com --password example --productId mementomori --type GCL``` 代表在无 GUI 模式下使用邮箱为 example@example.com 的账号登录 DMM 后启动本地的 MementoMori 游戏。
+
+---
+
+## 本 fork 中已确认 / 可配置的功能（对应 issue：自定义下载目录、去日本 IP 限制、无需 tun、BepInEx）
+
+### 1. DMM 下载目录可自定义（不必装在 C 盘）
+- UI：设置页「默认游戏安装文件夹」→ 选中任意文件夹 (`Celestite/Pages/SettingsPage.axaml:213-221`, `Celestite/ViewModels/Pages/SettingsViewModel.cs:120-138`)
+- 后端：`ConfigUtils.UpdateDmmGamesDefaultInstallFolder` (`Celestite/Utils/ConfigUtils.cs:62-68`) 写入 `dmmgame.cnf` 的 `DefaultInstallDir`
+- 读取：`DmmGamesDefaultInstallFolder` (`ConfigUtils.cs:39`)；下载入口 `KashimaDownloadManager.PushDownloadInfo` (`Celestite/Network/Downloader/KashimaDownloadManager.cs:139`) 以它为 `baseInstallDir`
+- 结论：**已支持**。将下载目录设到 D 盘或任意文件夹后，游戏不会再默认写入 C 盘。
+
+### 2. 游戏主程序目录可自定义到任意文件夹
+- `GameSettingsDialogViewModel.UseGameFilesOnDisk` (`Celestite/ViewModels/Dialogs/GameSettingsDialogViewModel.cs:138-189`): 选择已安装游戏的主程序所在任意文件夹，并写入 `content.Detail.Path`
+- 结合上述自定义下载目录，游戏主程序可放在任意文件夹
+- 结论：**已支持**。
+
+### 3. 不需要代理 / tun 模式启动游戏
+- 客户端代码中**不存在**日本 IP 限制逻辑，也不强制 tun/代理：
+  - `DynamicProxyImpl.GetProxy` (`Celestite/Network/DynamicProxy/DynamicProxy.cs:10-16`)：Windows 下优先用系统代理，未配置代理时回退 `HttpNoProxy`（直连）
+  - `HttpClient.DefaultProxy = DynamicProxyImpl.GetProxy()` (`Celestite/Network/HttpHelper.cs:264`)
+- 区域 / IP 限制是 **DMM 服务器端** 按客户端公网 IP 判断的（见 `Network.Models.DmmGamePlayerApiResponse` 的 `COUNTRY_NOT_ALLOWED = 801` / `AREA_NOT_ALLOWED = 803`），**不在本启动器客户端代码中**，因此**无法在客户端“移除”**。
+- 如需在日本以外地区游玩，仍需自备日本 IP/代理；本启动器支持可选的系统代理 / Himari 代理（设置页开关），但**不强制 tun**。
+- 结论：本启动器本身可直连启动，无需 tun；服务器端区域限制无法通过客户端改动去除（开源版不含服务器端绕过逻辑，见 README 脚注 [^1]，该功能仅在二进制 Releases 提供）。
+
+### 4. BepInEx 插件支持
+- 启动器通过 `ProcessUtils.LaunchProcess` (`Celestite/Utils/ProcessUtils.cs:53-65`) 直接启动游戏主程序，不对游戏目录做完整性覆盖
+- 操作：将 BepInEx 解压到游戏主程序目录即可
+- 建议：在对应游戏的设置中开启「强制跳过文件校验」（`ForceSkipFileCheck`, `Celestite/ViewModels/Dialogs/GameSettingsDialog.axaml` 与 `GameSettingsDialogViewModel.cs:33-60`），防止启动器文件校验把 BepInEx 文件还原
+- 结论：**已支持**（架构层面即可用，无需额外代码）。
+
+### 不能在客户端完成的
+- 移除日本 IP / 区域限制：由 DMM 服务器端强制，客户端无法绕过；需日本 IP 或代理。
