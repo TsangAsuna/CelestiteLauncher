@@ -91,6 +91,10 @@ namespace Celestite.Utils
                 _initialized = true;
                 try
                 {
+                    // Go 的 http.ProxyFromEnvironment 只读环境变量、不读 WinINET 系统代理；
+                    // DMM 区域网关会拒绝直连，必须先把系统代理同步给 Go 层（实测 801→203）
+                    TrySyncSystemProxyToEnvironment();
+
                     var cexPath = ResolveCexPath();
                     if (string.IsNullOrEmpty(cexPath))
                     {
@@ -116,6 +120,55 @@ namespace Celestite.Utils
                     Logger.Error("cex load failed", ex);
                     return false;
                 }
+            }
+        }
+
+        /// <summary>
+        /// 把 WinINET 系统代理同步到 HTTP_PROXY/HTTPS_PROXY 环境变量。
+        /// Go 层（dgp5go）的 http.ProxyFromEnvironment 只认环境变量；
+        /// 不同步时 DgpLogin 直连会被 DMM 区域网关拒（HTTP 非 200 → panic 包装）。
+        /// 已存在的环境变量不覆盖。
+        /// </summary>
+        private static void TrySyncSystemProxyToEnvironment()
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("HTTPS_PROXY")))
+                    return; // 用户已自行配置，不覆盖
+                const string keyPath = @"SoftwareMicrosoftWindowsCurrentVersionInternet Settings";
+                using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(keyPath);
+                if (key == null) return;
+                if ((key.GetValue("ProxyEnable") as int?) != 1) return;
+                var server = key.GetValue("ProxyServer") as string;
+                if (string.IsNullOrWhiteSpace(server)) return;
+
+                string? httpsProxy = null;
+                // 形态1: socks=host:port；形态2: http=...;https=...；形态3: host:port
+                foreach (var part in server.Split(';'))
+                {
+                    var kv = part.Split('=');
+                    if (kv.Length == 2 && kv[0].Equals("socks", StringComparison.OrdinalIgnoreCase))
+                    {
+                        httpsProxy = "socks5://" + kv[1];
+                        break;
+                    }
+                    if (kv.Length == 2 && kv[0].Equals("https", StringComparison.OrdinalIgnoreCase))
+                    {
+                        httpsProxy = "http://" + kv[1];
+                        break;
+                    }
+                }
+                if (httpsProxy == null && !server.Contains('=') && server.Contains(':'))
+                    httpsProxy = "http://" + server;
+                if (string.IsNullOrEmpty(httpsProxy)) return;
+
+                Environment.SetEnvironmentVariable("HTTPS_PROXY", httpsProxy);
+                Environment.SetEnvironmentVariable("HTTP_PROXY", httpsProxy);
+                Logger.Info("proxy synced to env for Go layer: " + httpsProxy);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn("sync system proxy failed: " + ex.Message);
             }
         }
 
