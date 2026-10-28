@@ -216,7 +216,7 @@ namespace Celestite.ViewModels.DefaultVM
                         if (restarted)
                         {
                             for (var i = 0; i < 20 && !await CdpHelper.IsDebugPortAlive(); i++)
-                                await UniTask.Delay(500);
+                                await Task.Delay(500);
                         }
                     }
 

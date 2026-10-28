@@ -68,7 +68,7 @@ namespace Celestite.Utils
             while (!ct.IsCancellationRequested)
             {
                 var total = 0;
-                WebSocketReceiveResult result;
+                ValueWebSocketReceiveResult result;
                 do
                 {
                     result = await ws.ReceiveAsync(buffer.AsMemory(total), ct);
