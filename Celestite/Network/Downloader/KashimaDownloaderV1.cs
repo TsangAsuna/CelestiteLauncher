@@ -287,7 +287,7 @@ namespace Celestite.Network.Downloader
         public async UniTask DownloadSingleModuleFile(ModuleFile moduleFile)
         {
             var localPath = Path.Combine(_installPath, moduleFile.DirName, moduleFile.ExecFileName);
-            var relativePath = ZString.Concat(moduleFile.DirName, "/", moduleFile.ExecFileName);
+            var relativePath = string.Concat(moduleFile.DirName, "/", moduleFile.ExecFileName);
             // ForceSkipFileCheck 开启且路径受保护：跳过模块文件下载，保护 BepInEx 等插件文件
             if (IsProtectedPath(relativePath, ProtectedRelativePathPrefixes, ForceSkipFileCheck))
                 return;

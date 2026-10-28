@@ -47,7 +47,7 @@ jobs:
       - name: Install Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang zlib1g-dev libgtk-3-dev libwebkit2gtk-4.0-dev
+          sudo apt-get install -y clang zlib1g-dev pkg-config || true
 
       - name: Setup .NET 8 SDK
         uses: actions/setup-dotnet@v4
