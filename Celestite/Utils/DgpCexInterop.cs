@@ -223,7 +223,6 @@ namespace Celestite.Utils
 
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
         private static extern IntPtr GetProcAddress(IntPtr module, string name);
-    }
 
         /// <summary>
         /// 完整 cex 登录：DgpLogin → 宽容解析（snake/camel、header/body 嵌套、id_token JWT、
@@ -298,3 +297,4 @@ namespace Celestite.Utils
             public string RefreshToken { get; set; } = string.Empty;
         }
     }
+}
