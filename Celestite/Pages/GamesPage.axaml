@@ -57,9 +57,13 @@
 				</TabControl>
 				<fluent:CommandBar DockPanel.Dock="Right" DefaultLabelPosition="Right">
 					<fluent:CommandBar.PrimaryCommands>
+						<fluent:CommandBarButton
+							IconSource="Refresh"
+							Label="{x:Static locale:Localization.AutoDetectDmmGames}"
+							Command="{Binding OpenAutoDetectDialogCommand}"></fluent:CommandBarButton>
 						<fluent:CommandBarToggleButton
 							IconSource="EyeOff" Label="{x:Static locale:Localization.ToggleShowHiddenGames}" IsChecked="{Binding !IsOnlyShowViewable, Mode=TwoWay}"
-                            ></fluent:CommandBarToggleButton>
+	                    ></fluent:CommandBarToggleButton>
 					</fluent:CommandBar.PrimaryCommands>
 				</fluent:CommandBar>
 			</DockPanel>

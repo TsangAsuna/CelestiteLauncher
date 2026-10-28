@@ -182,16 +182,26 @@
                 ></ToggleSwitch>
 			</fluent:SettingsExpander.Footer>
 		</fluent:SettingsExpander-->
-		<fluent:SettingsExpander
-            IconSource="DocumentOnePage"
-			IsVisible="{Binding IsCl}"
-            Header="{x:Static locale:Localization.LocateDownloadedGameExe}"
-            Description="{x:Static locale:Localization.LocateDownloadedGameExeDescription}"
-			IsClickEnabled="True"
-			Command="{Binding UseGameFilesOnDiskCommand}"
-			ActionIconSource="ChevronRight"
-        >
-		</fluent:SettingsExpander>
+			<fluent:SettingsExpander
+	            IconSource="DocumentOnePage"
+				IsVisible="{Binding IsCl}"
+	            Header="{x:Static locale:Localization.LocateDownloadedGameExe}"
+	            Description="{x:Static locale:Localization.LocateDownloadedGameExeDescription}"
+				IsClickEnabled="True"
+				Command="{Binding UseGameFilesOnDiskCommand}"
+				ActionIconSource="ChevronRight"
+	        >
+			</fluent:SettingsExpander>
+			<fluent:SettingsExpander
+	            IconSource="Move"
+				IsVisible="{Binding IsCl}"
+	            Header="{x:Static locale:Localization.MigrateGameTitle}"
+	            Description="{x:Static locale:Localization.MigrateGameDescription}"
+				IsClickEnabled="True"
+				Command="{Binding MigrateGameCommand}"
+				ActionIconSource="ChevronRight"
+	        >
+			</fluent:SettingsExpander>
 		<TextBlock Text="{x:Static locale:Localization.HeaderDangerousAction}" Theme="{StaticResource SubtitleTextBlockStyle}" Margin="0, 8"></TextBlock>
 		<fluent:SettingsExpander
             IconSource="Delete"

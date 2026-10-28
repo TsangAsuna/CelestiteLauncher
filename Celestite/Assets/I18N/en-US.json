@@ -258,5 +258,33 @@
   "HigherWebView2VersionRequired": "To use Celestite's embedded browser, please upgrade Microsoft Edge WebView2 to version 120.0.2210.55 or higher. Click the prompt to go to the download page.",
 
   "SafeFanzaIcon": "Enable Safe FANZA Game Icons",
-  "SafeFanzaIconDesc": "※ This feature will blur the game icons when there are games from FANZA in the game or mission list."
+  "SafeFanzaIconDesc": "※ This feature will blur the game icons when there are games from FANZA in the game or mission list.",
+
+  "AutoDetectTitle": "Auto-detect DMM Games",
+  "AutoDetectDescription": "Scan DMMGamePlayer locally installed games that are not yet tracked by Celestite, and add them to the game list.",
+  "AutoDetectDmmGames": "Auto-detect DMM Games",
+  "AutoDetectScanning": "Scanning DMMGamePlayer locally installed games...",
+  "AutoDetectFoundCount": "Found {0} trackable games",
+  "AutoDetectNoNewGames": "No newly installed games found",
+  "AutoDetectError": "Scan failed: {0}",
+  "AutoDetectSelectAtLeastOne": "Please select at least one game",
+  "AutoDetectAdding": "Adding {0}...",
+  "AutoDetectAddComplete": "Successfully added {0}/{1} games",
+  "AutoDetectAddButton": "Add selected games",
+
+  "MigrateGameTitle": "Migrate Game Directory",
+  "MigrateGameDescription": "Move the game main program directory to a custom folder",
+  "MigrateCurrentPath": "Current game directory",
+  "MigrateTargetPath": "Target game directory",
+  "MigrateSelectTargetFolderTitle": "Select migration target folder",
+  "MigrateDeleteSource": "Delete source directory after migration",
+  "MigrateStartButton": "Start migration",
+  "MigrateCopyingFiles": "Copying files",
+  "MigrateSuccess": "Migration completed",
+  "MigrateSuccessAndSourceDeleted": "Migration completed, source directory deleted",
+  "MigrateSuccessButSourceDeleteFailed": "Migration completed, but failed to delete source directory",
+  "MigrateFailed": "Migration failed",
+  "MigrateSourcePathInvalid": "Source game directory is invalid",
+  "MigrateTargetPathRequired": "Please select a target folder",
+  "MigrateSamePathError": "Source directory and target directory cannot be the same"
 }

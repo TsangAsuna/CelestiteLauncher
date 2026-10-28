@@ -258,5 +258,33 @@
   "HigherWebView2VersionRequired": "要使用 Celestite 内置浏览器，请升级 Microsoft Edge WebView2 到版本 120.0.2210.55 及以上。点击提示前往下载页面。",
 
   "SafeFanzaIcon": "启用安全的 FANZA 游戏图标",
-  "SafeFanzaIconDesc": "※ 这项功能会在当游戏或任务列表中有来自FANZA的游戏时模糊化游戏图标。"
+  "SafeFanzaIconDesc": "※ 这项功能会在当游戏或任务列表中有来自FANZA的游戏时模糊化游戏图标。",
+
+  "AutoDetectTitle": "自动识别 DMM 游戏",
+  "AutoDetectDescription": "扫描 DMMGamePlayer 本地已安装但尚未被 Celestite 追踪的游戏，并将其添加到游戏列表。",
+  "AutoDetectDmmGames": "自动识别 DMM 游戏",
+  "AutoDetectScanning": "正在扫描 DMMGamePlayer 本地已安装游戏...",
+  "AutoDetectFoundCount": "发现 {0} 款可追踪的游戏",
+  "AutoDetectNoNewGames": "未发现新的已安装游戏",
+  "AutoDetectError": "扫描失败：{0}",
+  "AutoDetectSelectAtLeastOne": "请至少选择一款游戏",
+  "AutoDetectAdding": "正在添加 {0}...",
+  "AutoDetectAddComplete": "成功添加 {0}/{1} 款游戏",
+  "AutoDetectAddButton": "添加选中的游戏",
+
+  "MigrateGameTitle": "迁移游戏目录",
+  "MigrateGameDescription": "将游戏主程序目录移动到自定义文件夹",
+  "MigrateCurrentPath": "当前游戏目录",
+  "MigrateTargetPath": "目标游戏目录",
+  "MigrateSelectTargetFolderTitle": "选择迁移目标文件夹",
+  "MigrateDeleteSource": "迁移完成后删除源目录",
+  "MigrateStartButton": "开始迁移",
+  "MigrateCopyingFiles": "正在复制文件",
+  "MigrateSuccess": "迁移完成",
+  "MigrateSuccessAndSourceDeleted": "迁移完成，源目录已删除",
+  "MigrateSuccessButSourceDeleteFailed": "迁移完成，但源目录删除失败",
+  "MigrateFailed": "迁移失败",
+  "MigrateSourcePathInvalid": "源游戏目录无效",
+  "MigrateTargetPathRequired": "请选择目标文件夹",
+  "MigrateSamePathError": "源目录和目标目录不能相同"
 }

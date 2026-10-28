@@ -46,15 +46,17 @@ namespace Celestite.ViewModels.Pages
             throw new NotSupportedException();
         }
     }
-    public partial class GamesPageViewModel : ViewModelBase
-    {
-        [ObservableProperty] private AvaloniaList<MyGame> _gamesSource = [];
-        [ObservableProperty] private AvaloniaList<MyGame> _games = [];
-        [ObservableProperty] private GameType _selectedIndex = GameType.Download;
+        public partial class GamesPageViewModel : ViewModelBase
+        {
+            [ObservableProperty] private AvaloniaList<MyGame> _gamesSource = [];
+            [ObservableProperty] private AvaloniaList<MyGame> _games = [];
+            [ObservableProperty] private GameType _selectedIndex = GameType.Download;
 
-        [ObservableProperty] private bool _isOnlyShowViewable = true;
-        [ObservableProperty] private string _filterText = string.Empty;
-        public bool SafeIconEnabled { get; set; } = ConfigUtils.GetSafeFanzaIcon();
+            [ObservableProperty] private bool _isOnlyShowViewable = true;
+            [ObservableProperty] private string _filterText = string.Empty;
+            public bool SafeIconEnabled { get; set; } = ConfigUtils.GetSafeFanzaIcon();
+
+            public AsyncRelayCommand OpenAutoDetectDialogCommand { get; }
 
         private static AddClientGameDialogViewModel? _permanentAddClientGameDialogViewModel;
         private static AddBrowserGameDialogViewModel? _permanentAddBrowserGameDialogViewModel;
@@ -66,6 +68,8 @@ namespace Celestite.ViewModels.Pages
         private static ContentDialog? _addBrowserGameDialog = null;
         private static ContentDialog? _agreementDialog = null;
         private static ContentDialog? _hardwareRegDialog = null;
+        private static ContentDialog? _autoDetectDialog = null;
+        private static AutoDetectDmmGamesDialogViewModel? _autoDetectDialogViewModel = null;
         public static AutoCompleteFilterPredicate<object> AutoCompleteFilter =>
             (search, item) =>
             {
@@ -117,6 +121,18 @@ namespace Celestite.ViewModels.Pages
             IsHitTestVisible = false,
             Content = new HardwareRegDialog()
         }));
+        public static ContentDialog AutoDetectDialog => LazyInitializer.EnsureInitialized(ref _autoDetectDialog, () => Dispatcher.UIThread.Invoke(() => new ContentDialog()
+        {
+            IsVisible = false,
+            Title = Localization.AutoDetectTitle,
+            PrimaryButtonText = Localization.ButtonOk,
+            CloseButtonText = Localization.ButtonCancel,
+            IsPrimaryButtonEnabled = true,
+            DefaultButton = ContentDialogButton.Primary,
+            IsHitTestVisible = false,
+            DataContext = _autoDetectDialogViewModel ??= new AutoDetectDmmGamesDialogViewModel(),
+            Content = new AutoDetectDmmGamesDialog() { DataContext = _autoDetectDialogViewModel }
+        }));
 
         public GamesPageViewModel()
         {
@@ -142,6 +158,13 @@ namespace Celestite.ViewModels.Pages
                         return;
                 }
             };
+
+            OpenAutoDetectDialogCommand = new AsyncRelayCommand(async () =>
+            {
+                var trackedGames = GamesSource.ToList();
+                await _autoDetectDialogViewModel.LoadDetectedGamesAsync(trackedGames);
+                await Dispatcher.UIThread.InvokeAsync(() => AutoDetectDialog.ShowAsync());
+            });
 
             if (OperatingSystem.IsWindows() && DmmGamePlayerApiHelper.CurrentUserInfo != null)
                 Carleen.UpdateCurrentUser(DmmGamePlayerApiHelper.CurrentUserInfo.OpenId, HttpHelper.LoginSecureId, HttpHelper.LoginSessionId);

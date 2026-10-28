@@ -5,6 +5,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Celestite.Configs;
+using Celestite.Dialogs.Games;
 using Celestite.I18N;
 using Celestite.Network;
 using Celestite.Network.Downloader;
@@ -265,5 +266,25 @@ namespace Celestite.ViewModels.Dialogs
 
         [RelayCommand]
         private async Task CreateShortcut() => await LaunchHelper.CreateShortcut(GameData.ProductId, GameData.Type, GameData.Title, GameData.PackageImageUrl);
+
+        [RelayCommand]
+        private async Task MigrateGame()
+        {
+            if (!ContentInstalled) return;
+            var viewModel = new DmmGameMigrationDialogViewModel(GameData);
+            var dialog = new ContentDialog()
+            {
+                IsVisible = false,
+                Title = Localization.MigrateGameTitle,
+                PrimaryButtonText = Localization.ButtonOk,
+                CloseButtonText = Localization.ButtonCancel,
+                IsPrimaryButtonEnabled = true,
+                DefaultButton = ContentDialogButton.Primary,
+                IsHitTestVisible = false,
+                DataContext = viewModel,
+                Content = new DmmGameMigrationDialog() { DataContext = viewModel }
+            };
+            await Dispatcher.UIThread.InvokeAsync(() => dialog.ShowAsync());
+        }
     }
 }
