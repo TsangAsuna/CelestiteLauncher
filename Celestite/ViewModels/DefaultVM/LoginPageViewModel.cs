@@ -322,6 +322,41 @@ namespace Celestite.ViewModels.DefaultVM
         }
 
         /// <summary>
+        /// 定位 DMMGamePlayer.exe：MainModule（常因权限失败）→ WMI Win32_Process → 默认安装路径。
+        /// </summary>
+        private static string? FindDgpExecutablePath(IEnumerable<System.Diagnostics.Process> processes)
+        {
+            foreach (var p in processes)
+            {
+                try
+                {
+                    var f = p.MainModule?.FileName;
+                    if (!string.IsNullOrEmpty(f)) return f;
+                }
+                catch { /* 64/32 位或权限问题，走下一个来源 */ }
+            }
+
+            try
+            {
+                using var searcher = new System.Management.ManagementObjectSearcher(
+                    "SELECT ExecutablePath FROM Win32_Process WHERE Name = 'DMMGamePlayer.exe'");
+                foreach (var o in searcher.Get())
+                {
+                    if (o["ExecutablePath"] is string path && !string.IsNullOrEmpty(path))
+                        return path;
+                }
+            }
+            catch { /* WMI 不可用则走默认路径 */ }
+
+            string[] defaults =
+            [
+                @"C:\Program Files\DMMGamePlayer\DMMGamePlayer.exe",
+                @"C:\Program Files (x86)\DMMGamePlayer\DMMGamePlayer.exe",
+            ];
+            return defaults.FirstOrDefault(File.Exists);
+        }
+
+        /// <summary>
         /// 以 --remote-debugging-port 重启 DMMGamePlayer 以便 CDP 读取会话。
         /// 返回是否成功发出重启。
         /// </summary>
@@ -330,10 +365,9 @@ namespace Celestite.ViewModels.DefaultVM
             try
             {
                 var processes = System.Diagnostics.Process.GetProcessesByName("DMMGamePlayer");
-                string? exePath = null;
+                var exePath = FindDgpExecutablePath(processes);
                 foreach (var p in processes)
                 {
-                    try { exePath ??= p.MainModule?.FileName; } catch { /* 权限不足忽略 */ }
                     try
                     {
                         if (!p.CloseMainWindow())
@@ -343,12 +377,19 @@ namespace Celestite.ViewModels.DefaultVM
                 }
                 foreach (var p in processes)
                 {
-                    try { p.WaitForExit(5000); p.Dispose(); } catch { }
+                    try
+                    {
+                        // DGP 可能配置了“关闭到托盘”：CloseMainWindow 只会隐藏窗口，超时后强制结束
+                        if (!p.WaitForExit(5000))
+                            p.Kill(true);
+                        p.Dispose();
+                    }
+                    catch { /* 已退出 */ }
                 }
 
-                if (string.IsNullOrEmpty(exePath) || !System.IO.File.Exists(exePath))
+                if (string.IsNullOrEmpty(exePath) || !File.Exists(exePath))
                 {
-                    _logger.Warn("DMMGamePlayer.exe path not found for CDP restart");
+                    _logger.Warn("DMMGamePlayer.exe path not found for CDP restart (MainModule/WMI/default all failed)");
                     return false;
                 }
 

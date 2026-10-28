@@ -202,9 +202,9 @@ namespace Celestite.Utils
             string? secureId = null, sessionId = null;
             foreach (var c in cookies)
             {
-                if (c.Domain.Length < 4 || !c.Domain.EndsWith("dmm.com", StringComparison.OrdinalIgnoreCase) &&
-                    !c.Domain.EndsWith("dmm.co.jp", StringComparison.OrdinalIgnoreCase))
-                    continue;
+                var isDmm = c.Domain.EndsWith("dmm.com", StringComparison.OrdinalIgnoreCase) ||
+                            c.Domain.EndsWith("dmm.co.jp", StringComparison.OrdinalIgnoreCase);
+                if (!isDmm) continue;
                 if (c.Name == "login_secure_id" && string.IsNullOrEmpty(secureId)) secureId = c.Value;
                 if (c.Name == "login_session_id" && string.IsNullOrEmpty(sessionId)) sessionId = c.Value;
             }
