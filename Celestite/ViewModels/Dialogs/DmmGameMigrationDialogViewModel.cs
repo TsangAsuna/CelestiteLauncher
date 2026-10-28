@@ -41,11 +41,17 @@ namespace Celestite.ViewModels.Dialogs
                 _content = c;
 
             CurrentGamePath = _content?.Detail.Path ?? string.Empty;
-            if (Directory.Exists(CurrentGamePath))
+
+            // 默认目标路径：优先 F:\DMMDownload（用户自定义下载目录），其次当前路径的父目录
+            var fDriveDownload = @"F:\DMMDownload";
+            var folderName = Path.GetFileName(CurrentGamePath);
+            if (Directory.Exists(fDriveDownload) || DriveInfo.GetDrives().Any(d => d.Name == @"F:\"))
             {
-                // 默认目标路径为当前路径的父目录下的同名新文件夹
+                TargetGamePath = Path.Combine(fDriveDownload, folderName ?? string.Empty);
+            }
+            else if (Directory.Exists(CurrentGamePath))
+            {
                 var parent = Directory.GetParent(CurrentGamePath);
-                var folderName = Path.GetFileName(CurrentGamePath);
                 if (parent != null)
                     TargetGamePath = Path.Combine(parent.FullName, $"{folderName}_migrated");
             }
