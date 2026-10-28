@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -64,6 +65,45 @@ namespace Celestite.ViewModels.DefaultVM
         {
             HttpHelper.ClearCookies();
             var login = await DmmOpenApiHelper.Login(email, password);
+            if (login.Failed && login.Error?.Code == "E210002")
+            {
+                // DMM 已作废旧 OAuth Basic 凭据（E210002）：改走 cex.dll（DMMGamePlayer Go 网络层）同协议登录
+                var cex = await UniTask.Run(() => DgpCexInterop.Login(email, password));
+                if (string.IsNullOrEmpty(cex))
+                    return DmmOpenApiResult.Fail(Localization.DgpCookiesCopyFailed);
+                var fields = ParseCexLoginResponse(cex);
+                if (fields.UserId == null && !string.IsNullOrEmpty(fields.AccessToken))
+                    fields.UserId = ExtractUserIdFromUserInfo();
+                if (string.IsNullOrEmpty(fields.AccessToken) || string.IsNullOrEmpty(fields.UserId))
+                    return DmmOpenApiResult.Fail(Localization.DmmLoginLocationNotFound);
+
+                if (!string.IsNullOrEmpty(fields.RefreshToken))
+                    DmmOpenApiHelper.UpdateRefreshToken(fields.RefreshToken);
+                DmmOpenApiHelper.UpdateAccessToken(fields.AccessToken);
+
+                var issueSessionIdCex = await DmmOpenApiHelper.IssueSessionId(fields.UserId);
+                if (issueSessionIdCex.Failed) return issueSessionIdCex;
+
+                if (saveEmail || savePassword || autoLogin)
+                {
+                    var accountObjectCex = new AccountObject();
+                    accountObjectCex.SaveEmail = saveEmail;
+                    accountObjectCex.SavePassword = savePassword;
+                    if (saveEmail) accountObjectCex.Email = email;
+                    if (savePassword) accountObjectCex.Password = password;
+                    accountObjectCex.AutoLogin = autoLogin;
+                    if (autoLogin)
+                    {
+                        accountObjectCex.UserId = fields.UserId;
+                        accountObjectCex.RefreshToken = fields.RefreshToken ?? string.Empty;
+                    }
+                    if (!string.IsNullOrEmpty(accountObjectCex.Email) || !string.IsNullOrEmpty(accountObjectCex.UserId))
+                        ConfigUtils.PushAccountObject(accountObjectCex);
+                }
+                DmmGamePlayerApiHelper.SetUserCookies(issueSessionIdCex.Value.SecureId, issueSessionIdCex.Value.UniqueId);
+                DmmGamePlayerApiHelper.SetAgeCheckDone();
+                return issueSessionIdCex;
+            }
             if (login.Failed)
                 return login;
             var accessToken = await DmmOpenApiHelper.ExchangeAccessToken(login.Value.AccessToken);
@@ -410,6 +450,85 @@ namespace Celestite.ViewModels.DefaultVM
                 _logger.Warn($"restart DMMGamePlayer with debug port failed: {ex.Message}");
                 return false;
             }
+        }
+
+        private sealed class CexLoginFields
+        {
+            public string? AccessToken;
+            public string? IdToken;
+            public string? RefreshToken;
+            public string? UserId;
+        }
+
+        // cex.dll 的 DgpLogin 返回结构由 DMM 决定，这里宽容解析 snake/camel 双形态与 header/body 嵌套
+        private static CexLoginFields ParseCexLoginResponse(string raw)
+        {
+            var f = new CexLoginFields();
+            try
+            {
+                using var doc = JsonDocument.Parse(raw);
+                var roots = new List<JsonElement>();
+                var root = doc.RootElement;
+                roots.Add(root);
+                if (root.ValueKind == JsonValueKind.Object)
+                {
+                    if (root.TryGetProperty("body", out var bodyEl)) roots.Add(bodyEl);
+                    if (root.TryGetProperty("data", out var dataEl)) roots.Add(dataEl);
+                }
+                string? Pick(JsonElement el, string snake, string camel)
+                {
+                    if (el.ValueKind != JsonValueKind.Object) return null;
+                    if (el.TryGetProperty(snake, out var v1) && v1.ValueKind == JsonValueKind.String) return v1.GetString();
+                    if (el.TryGetProperty(camel, out var v2) && v2.ValueKind == JsonValueKind.String) return v2.GetString();
+                    return null;
+                }
+                foreach (var r in roots)
+                {
+                    f.AccessToken ??= Pick(r, "access_token", "accessToken");
+                    f.IdToken ??= Pick(r, "id_token", "idToken");
+                    f.RefreshToken ??= Pick(r, "refresh_token", "refreshToken");
+                    f.UserId ??= Pick(r, "user_id", "userId");
+                }
+                // id_token 是 JWT：payload.user_id 可兜底
+                if (f.UserId == null && f.IdToken != null)
+                {
+                    try
+                    {
+                        var parts = f.IdToken.Split('.');
+                        if (parts.Length >= 2)
+                        {
+                            var pad = parts[1].Length % 4 == 0 ? parts[1] : parts[1] + new string('=', 4 - parts[1].Length % 4);
+                            var payload = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(pad.Replace('-', '+').Replace('_', '/')));
+                            using var pdoc = JsonDocument.Parse(payload);
+                            if (pdoc.RootElement.TryGetProperty("user_id", out var uid)) f.UserId = uid.GetString();
+                        }
+                    }
+                    catch { /* JWT 解析失败忽略 */ }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("cex parse err: " + ex.Message);
+            }
+            return f;
+        }
+
+        private static string? ExtractUserIdFromUserInfo()
+        {
+            try
+            {
+                var raw = DgpCexInterop.GetUserInfo();
+                if (string.IsNullOrEmpty(raw)) return null;
+                using var doc = JsonDocument.Parse(raw);
+                var root = doc.RootElement;
+                JsonElement data = root;
+                if (root.TryGetProperty("data", out var d) && d.ValueKind == JsonValueKind.Object) data = d;
+                foreach (var name in new[] { "user_id", "userId", "open_id", "openId" })
+                    if (data.ValueKind == JsonValueKind.Object && data.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String)
+                        return v.GetString();
+            }
+            catch { /* 忽略 */ }
+            return null;
         }
 
         private static bool ConvertEncryptedKeyBase64(string base64, out byte[] result)
