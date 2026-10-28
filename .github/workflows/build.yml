@@ -1,0 +1,71 @@
+name: Build Celestite Launcher
+
+on:
+  push:
+    branches: [ main, feature/* ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore workloads
+        run: dotnet workload update
+
+      - name: Build (Release)
+        run: dotnet build Celestite.Desktop/Celestite.Desktop.csproj -c Release
+
+      - name: Publish (win-x64)
+        run: dotnet publish Celestite.Desktop/Celestite.Desktop.csproj -c Release -r win-x64 --self-contained false -o ./publish/windows
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: celestite-windows
+          path: publish/windows/**
+          retention-days: 7
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang zlib1g-dev libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore workloads
+        run: dotnet workload update
+
+      - name: Build (Release)
+        run: dotnet build Celestite.Desktop/Celestite.Desktop.csproj -c Release
+
+      - name: Publish (linux-x64)
+        run: dotnet publish Celestite.Desktop/Celestite.Desktop.csproj -c Release -r linux-x64 --self-contained false -o ./publish/linux
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: celestite-linux
+          path: publish/linux/**
+          retention-days: 7
