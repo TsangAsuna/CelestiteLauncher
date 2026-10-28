@@ -75,11 +75,70 @@ namespace Celestite.Utils
             return JsonSerializer.Deserialize(fs, ElectronDataJsonSerializerContext.Default.LocalState);
         }
 
+        /// <summary>
+        /// 将 DGP5 的 Cookies 库复制到本地目录后返回副本路径。
+        /// DMMGamePlayer 运行时对 Cookies 持有锁，直接打开可能失败；
+        /// 先复制（连同 -journal 以便 sqlite 回放未提交页）再以只读方式打开副本即可绕过锁。
+        /// </summary>
+        public static string? CopyDgpCookiesForRead()
+        {
+            try
+            {
+                var cookiesPath = Path.Combine(Dgp5ConfigFilePath, "Network", "Cookies");
+                if (!File.Exists(cookiesPath)) return null;
+                var copyDir = Path.Combine(CelestiteAppConfigFolder, "dgp_cookies_copy");
+                Directory.CreateDirectory(copyDir);
+                var copyPath = Path.Combine(copyDir, "Cookies");
+                File.Copy(cookiesPath, copyPath, overwrite: true);
+                var journal = cookiesPath + "-journal";
+                var copyJournal = copyPath + "-journal";
+                if (File.Exists(journal))
+                    File.Copy(journal, copyJournal, overwrite: true);
+                else if (File.Exists(copyJournal))
+                    File.Delete(copyJournal);
+                return copyPath;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"copy dgp cookies failed: {ex.Message}");
+                return null;
+            }
+        }
+
+        public static void CleanupDgpCookiesCopy()
+        {
+            try
+            {
+                var copyDir = Path.Combine(CelestiteAppConfigFolder, "dgp_cookies_copy");
+                if (!Directory.Exists(copyDir)) return;
+                foreach (var f in Directory.GetFiles(copyDir))
+                    File.Delete(f);
+            }
+            catch
+            {
+                // 清理失败不影响主流程
+            }
+        }
+
         public static SqliteConnection OpenDgpCookiesConnection()
         {
             var builder = new SqliteConnectionStringBuilder
             {
                 DataSource = ZString.Concat(Dgp5ConfigFilePath, '/', "Network", '/', "Cookies")
+            };
+            var connection = new SqliteConnection(builder.ToString());
+            return connection;
+        }
+
+        /// <summary>
+        /// 打开 DGP5 Cookies 库的副本（由 CopyDgpCookiesForRead 生成），
+        /// 避免触碰被 DMMGamePlayer 锁定的原库；写操作（如 althash 回写）仍应走 OpenDgpCookiesConnection。
+        /// </summary>
+        public static SqliteConnection OpenDgpCookiesConnectionCopy(string cookiesCopyPath)
+        {
+            var builder = new SqliteConnectionStringBuilder
+            {
+                DataSource = cookiesCopyPath
             };
             var connection = new SqliteConnection(builder.ToString());
             return connection;

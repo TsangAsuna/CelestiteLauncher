@@ -191,55 +191,99 @@ namespace Celestite.ViewModels.DefaultVM
                 return;
             }
             masterKey = ProtectedData.Unprotect(masterKey, null, DataProtectionScope.CurrentUser);
+
+            // DMMGamePlayer 运行时持有 Cookies 库锁：先复制库（含 journal）再读副本，运行中也能读取
+            var cookiesCopy = ConfigUtils.CopyDgpCookiesForRead();
+            if (cookiesCopy == null)
+            {
+                SetLoginErrorStatus(Localization.DgpCookiesCopyFailed);
+                return;
+            }
+
             UniTask.Run(async () =>
             {
                 try
                 {
-                    await using var sqlConnection = ConfigUtils.OpenDgpCookiesConnection();
+                    await using var sqlConnection = ConfigUtils.OpenDgpCookiesConnectionCopy(cookiesCopy);
                     var version = Meta.GetMeta(sqlConnection, "version");
-                    var altHash = ElectronCookie.GetCookieByName(sqlConnection, "althash");
-                    var hasAltHash = ElectronCookie.GetCookieByName(sqlConnection, "has_althash");
-                    if (altHash == null || hasAltHash == null)
-                    {
-                        SetLoginErrorStatus(Localization.LoggedUserNotFoundError);
-                        return;
-                    }
-
                     var newFormat = version != null && version.Value >= 24;
 
-                    var decryptedAltHash = DecryptCookie(altHash.EncryptedValue.AsSpan(), masterKey, newFormat);
-                    var decryptedHasAltHash = DecryptCookie(hasAltHash.EncryptedValue.AsSpan(), masterKey, newFormat);
+                    var altHash = ElectronCookie.GetCookieByNameAnyHost(sqlConnection, "althash");
+                    var hasAltHash = ElectronCookie.GetCookieByNameAnyHost(sqlConnection, "has_althash");
 
-                    var loginResult =
-                        await DmmAltHashLoginHelper.LoginFromAltHash(decryptedAltHash, decryptedHasAltHash);
-                    if (loginResult.Failed)
+                    if (altHash != null && hasAltHash != null)
                     {
-                        SetLoginErrorStatus(loginResult.Error!);
+                        // 旧版 DMMGamePlayer：althash 免密登录流程
+                        var decryptedAltHash = DecryptCookie(altHash.EncryptedValue.AsSpan(), masterKey, newFormat);
+                        var decryptedHasAltHash = DecryptCookie(hasAltHash.EncryptedValue.AsSpan(), masterKey, newFormat);
+
+                        var loginResult =
+                            await DmmAltHashLoginHelper.LoginFromAltHash(decryptedAltHash, decryptedHasAltHash);
+                        if (loginResult.Failed)
+                        {
+                            SetLoginErrorStatus(loginResult.Error!);
+                            return;
+                        }
+
+                        // 回写续期 althash：写入原库；DMMGamePlayer 运行中锁库时仅记录，不阻塞登录
+                        try
+                        {
+                            await using var originConnection = ConfigUtils.OpenDgpCookiesConnection();
+                            altHash.EncryptedValue = EncryptCookie(loginResult.Value.AltHash.Value, masterKey, newFormat, altHash.HostKey);
+                            altHash.ExpiresUtc =
+                                (((DateTimeOffset)loginResult.Value.AltHash.Expires).ToUnixTimeSeconds() + 11644473600) *
+                                1000000;
+                            hasAltHash.EncryptedValue = EncryptCookie(loginResult.Value.HasAltHash.Value, masterKey, newFormat, hasAltHash.HostKey);
+                            hasAltHash.ExpiresUtc =
+                                (((DateTimeOffset)loginResult.Value.HasAltHash.Expires).ToUnixTimeSeconds() + 11644473600) *
+                                1000000;
+                            ElectronCookie.UpdateCookie(originConnection, altHash);
+                            ElectronCookie.UpdateCookie(originConnection, hasAltHash);
+                        }
+                        catch (Exception writeEx)
+                        {
+                            _logger.Warn($"althash renewal skipped (DMMGamePlayer running?): {writeEx.Message}");
+                        }
+
+                        DmmGamePlayerApiHelper.SetUserCookies(loginResult.Value.LoginSecureId, loginResult.Value.LoginSessionId);
+                        DmmGamePlayerApiHelper.SetAgeCheckDone();
+
+                        ConfigUtils.ClearLastLogin();
+                        await ProcessUser();
+                        SetDefaultStatus();
                         return;
                     }
 
-                    altHash.EncryptedValue = EncryptCookie(loginResult.Value.AltHash.Value, masterKey, newFormat, altHash.HostKey);
-                    altHash.ExpiresUtc =
-                        (((DateTimeOffset)loginResult.Value.AltHash.Expires).ToUnixTimeSeconds() + 11644473600) *
-                        1000000;
-                    hasAltHash.EncryptedValue = EncryptCookie(loginResult.Value.HasAltHash.Value, masterKey, newFormat, hasAltHash.HostKey);
-                    hasAltHash.ExpiresUtc =
-                        (((DateTimeOffset)loginResult.Value.HasAltHash.Expires).ToUnixTimeSeconds() + 11644473600) *
-                        1000000;
-                    ElectronCookie.UpdateCookie(sqlConnection, altHash);
-                    ElectronCookie.UpdateCookie(sqlConnection, hasAltHash);
+                    // 新版 DMMGamePlayer 已移除 althash 机制：直接读取持久的 DMM 会话 cookie
+                    var secureIdCookie = ElectronCookie.GetCookieByNameAnyHost(sqlConnection, "login_secure_id");
+                    var sessionIdCookie = ElectronCookie.GetCookieByNameAnyHost(sqlConnection, "login_session_id");
+                    if (secureIdCookie != null && sessionIdCookie != null &&
+                        secureIdCookie.EncryptedValue.Length > 31 && sessionIdCookie.EncryptedValue.Length > 31)
+                    {
+                        var secureId = DecryptCookie(secureIdCookie.EncryptedValue.AsSpan(), masterKey, newFormat);
+                        var sessionId = DecryptCookie(sessionIdCookie.EncryptedValue.AsSpan(), masterKey, newFormat);
+                        if (!string.IsNullOrEmpty(secureId) && !string.IsNullOrEmpty(sessionId))
+                        {
+                            DmmGamePlayerApiHelper.SetUserCookies(secureId, sessionId);
+                            DmmGamePlayerApiHelper.SetAgeCheckDone();
 
-                    DmmGamePlayerApiHelper.SetUserCookies(loginResult.Value.LoginSecureId, loginResult.Value.LoginSessionId);
-                    DmmGamePlayerApiHelper.SetAgeCheckDone();
+                            ConfigUtils.ClearLastLogin();
+                            await ProcessUser();
+                            SetDefaultStatus();
+                            return;
+                        }
+                    }
 
-                    ConfigUtils.ClearLastLogin();
-                    await ProcessUser();
-                    SetDefaultStatus();
+                    SetLoginErrorStatus(Localization.DgpLoginStateNotFound);
                 }
                 catch (Exception ex)
                 {
                     SetLoginErrorStatus(ex.Message);
                     _logger.Error(string.Empty, ex);
+                }
+                finally
+                {
+                    ConfigUtils.CleanupDgpCookiesCopy();
                 }
             }).Forget();
         }

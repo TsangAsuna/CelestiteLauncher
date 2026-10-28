@@ -22,6 +22,13 @@ namespace Celestite.Network.Models
             connection.QueryFirstOrDefault<ElectronCookie>(
                 "select encrypted_value, expires_utc, name, host_key from cookies where name = @name and host_key = '.dmm.com'", new { name });
 
+        /// <summary>
+        /// 不限定 host_key 查找 cookie。新版 DMMGamePlayer 可能将凭据写在 .dmm.co.jp 或 .dmm.com 任意一个域下。
+        /// </summary>
+        public static ElectronCookie? GetCookieByNameAnyHost(SqliteConnection connection, string name) =>
+            connection.QueryFirstOrDefault<ElectronCookie>(
+                "select encrypted_value, expires_utc, name, host_key from cookies where name = @name order by expires_utc desc", new { name });
+
         public static void UpdateCookie(SqliteConnection connection, ElectronCookie cookie) =>
             connection.Execute(
                 "update cookies set encrypted_value = @EncryptedValue, expires_utc = @ExpiresUtc where name = @Name and host_key = @HostKey",

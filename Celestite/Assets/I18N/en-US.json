@@ -219,6 +219,8 @@
   "LoadLocalStateError": "Failed to load Local State",
   "UnsupportedSystemError": "This feature is only supported on Windows systems",
   "LoggedUserNotFoundError": "No logged-in state found on DMMGamePlayer",
+  "DgpCookiesCopyFailed": "Unable to read DMMGamePlayer Cookies database (copy failed). Please make sure DMMGamePlayer is installed",
+  "DgpLoginStateNotFound": "No login credentials detected in DMMGamePlayer. New versions of DMMGamePlayer no longer store password-free login credentials. Please log in to Celestite directly with your email and password (auto-login will be available afterwards)",
   "DmmLoginLocationNotFound": "Login failed, credentials may be invalid",
   "MITMDetected": "Detected a potential TLS man-in-the-middle attack, the network is not secure",
 

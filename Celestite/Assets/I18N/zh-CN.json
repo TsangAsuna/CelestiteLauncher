@@ -219,6 +219,8 @@
   "LoadLocalStateError": "无法读取Local State",
   "UnsupportedSystemError": "该功能只支持Windows系统",
   "LoggedUserNotFoundError": "未在DMMGamePlayer上找到已经登录的状态",
+  "DgpCookiesCopyFailed": "无法读取DMMGamePlayer的Cookies数据库（复制失败），请确认DMMGamePlayer已安装",
+  "DgpLoginStateNotFound": "DMMGamePlayer中未检测到登录凭据。新版DMMGamePlayer不再保存免密登录凭据，请直接使用账号密码登录Celestite（登录一次后即可自动登录）",
   "DmmLoginLocationNotFound": "登录失败，凭据可能无效",
   "MITMDetected": "检测到潜在的TLS中间人攻击，网络不安全",
 
