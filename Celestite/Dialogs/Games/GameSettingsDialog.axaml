@@ -169,10 +169,11 @@
 				</fluent:SettingsExpanderItem.Footer>
 			</fluent:SettingsExpanderItem>
 		</fluent:SettingsExpander>
-		<!--fluent:SettingsExpander
+		<fluent:SettingsExpander
             IconSource="Wrench"
-			Header="跳过文件检查"
-			Description="不检查任何游戏文件的完整性，只检查版本号"
+			IsVisible="{Binding IsCl}"
+			Header="{x:Static locale:Localization.ForceSkipFileCheck}"
+			Description="{x:Static locale:Localization.ForceSkipFileCheckDesc}"
             >
 			<fluent:SettingsExpander.Footer>
 				<ToggleSwitch
@@ -181,7 +182,7 @@
                     OffContent="{x:Static locale:Localization.ToggleOff}"
                 ></ToggleSwitch>
 			</fluent:SettingsExpander.Footer>
-		</fluent:SettingsExpander-->
+		</fluent:SettingsExpander>
 			<fluent:SettingsExpander
 	            IconSource="DocumentOnePage"
 				IsVisible="{Binding IsCl}"

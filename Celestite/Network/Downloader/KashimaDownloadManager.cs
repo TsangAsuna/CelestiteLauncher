@@ -154,6 +154,19 @@ namespace Celestite.Network.Downloader
 
                 downloader.InitDefault(installDir, () => new SocketsHttpHandler() { Proxy = DynamicProxyImpl.GetProxy() },
                     false, cts.Token);
+
+                // 应用 ForceSkipFileCheck 保护：为 true 时 BepInEx 等插件文件不被下载器覆盖
+                var forceSkip = ConfigUtils.GetGameSettingsForceSkipFileCheck(clInfo.ProductId);
+                var protectedPrefixes = new List<string>
+                {
+                    "BepInEx/",
+                    "doorstop_config.ini",
+                    "winhttp.dll",
+                    "doorstop.x64.dll",
+                    "doorstop.x86.dll",
+                };
+                downloader.ConfigureProtection(forceSkip, protectedPrefixes);
+
                 if (clInfo is InstallClInfo { HasModules: true, Modules: not null } installClInfo)
                 {
                     var moduleInstallResult = await downloader.DownloadModules(installClInfo.Modules);

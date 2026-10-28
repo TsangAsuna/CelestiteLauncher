@@ -36,6 +36,31 @@ namespace Celestite.Network.Downloader
         private SocketsHttpHandler _socketsHttpHandler = null!;
         private bool _keepHttpHandler;
 
+        /// <summary>
+        /// 是否强制跳过文件校验。为 true 时，受保护的 BepInEx 相关文件不会被删除或重新下载。
+        /// </summary>
+        public bool ForceSkipFileCheck { get; private set; }
+
+        /// <summary>
+        /// 受保护的相对路径前缀列表。命中任一前缀的文件在 ForceSkipFileCheck 为 true 时不被下载/覆盖。
+        /// 例如：BepInEx/、doorstop_config.ini、winhttp.dll 等。
+        /// </summary>
+        public HashSet<string> ProtectedRelativePathPrefixes { get; } = new(StringComparer.OrdinalIgnoreCase)
+        {
+            // BepInEx 核心目录
+            "BepInEx/",
+            "BepInEx\\",
+            // BepInEx 配置文件（游戏根目录）
+            "doorstop_config.ini",
+            "doorstop_config.ini",
+            // 代理 DLL（BepInEx 依赖）
+            "winhttp.dll",
+            "winhttp.dll",
+            // 启动器入口
+            "doorstop.x64.dll",
+            "doorstop.x86.dll",
+        };
+
         private readonly Log _logger = LogManager.GetLogger("Kashima");
 
         private long _downloadedBytesAfterLastCheckpoint;
@@ -62,6 +87,37 @@ namespace Celestite.Network.Downloader
         public long GetTotalSize() => _totalSize;
 
         public void PrepareInit(CancellationToken token = default) => _cts ??= CancellationTokenSource.CreateLinkedTokenSource(token);
+
+        /// <summary>
+        /// 配置文件保护策略。ForceSkipFileCheck 为 true 时，ProtectedRelativePathPrefixes 中命中的文件不会被下载器覆盖。
+        /// </summary>
+        public void ConfigureProtection(bool forceSkip, IEnumerable<string>? protectedPrefixes = null)
+        {
+            ForceSkipFileCheck = forceSkip;
+            if (protectedPrefixes != null)
+            {
+                foreach (var p in protectedPrefixes)
+                {
+                    if (!string.IsNullOrEmpty(p))
+                        ProtectedRelativePathPrefixes.Add(p);
+                }
+            }
+        }
+
+        private static bool IsProtectedPath(string localPath, HashSet<string> prefixes, bool forceSkip)
+        {
+            if (!forceSkip) return false;
+            if (prefixes.Count == 0) return false;
+            var normalized = localPath.Replace('\\', '/');
+            foreach (var prefix in prefixes)
+            {
+                var p = prefix.Replace('\\', '/');
+                if (normalized.StartsWith(p, StringComparison.OrdinalIgnoreCase) ||
+                    normalized.Equals(p.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
+        }
 
         public void InitDefault(string installPath, Func<SocketsHttpHandler> handlerFactory, bool keepHttpHandler = false, CancellationToken token = default)
         {
@@ -109,6 +165,9 @@ namespace Celestite.Network.Downloader
                 .. list.AsParallel().Where(x =>
                 {
                     if (x.Size <= 0) return false;
+                    // ForceSkipFileCheck 开启且路径受保护：跳过下载，保护 BepInEx 等插件文件
+                    if (IsProtectedPath(x.LocalPath, ProtectedRelativePathPrefixes, ForceSkipFileCheck))
+                        return false;
                     var localPath = ZString.Concat(installDir, x.LocalPath);
                     var fileInfo = new FileInfo(localPath);
                     if (!fileInfo.Exists) return true;
@@ -228,6 +287,10 @@ namespace Celestite.Network.Downloader
         public async UniTask DownloadSingleModuleFile(ModuleFile moduleFile)
         {
             var localPath = Path.Combine(_installPath, moduleFile.DirName, moduleFile.ExecFileName);
+            var relativePath = ZString.Concat(moduleFile.DirName, "/", moduleFile.ExecFileName);
+            // ForceSkipFileCheck 开启且路径受保护：跳过模块文件下载，保护 BepInEx 等插件文件
+            if (IsProtectedPath(relativePath, ProtectedRelativePathPrefixes, ForceSkipFileCheck))
+                return;
             var fileInfo = new FileInfo(localPath);
             if (fileInfo.Exists)
                 fileInfo.Delete();
@@ -268,6 +331,10 @@ namespace Celestite.Network.Downloader
             if (downloadFileInfo.Size <= 0)
                 return;
             var localPath = ZString.Concat(_installPath, downloadFileInfo.LocalPath);
+            var relativePath = downloadFileInfo.LocalPath;
+            // ForceSkipFileCheck 开启且路径受保护：跳过下载，保护 BepInEx 等插件文件
+            if (IsProtectedPath(relativePath, ProtectedRelativePathPrefixes, ForceSkipFileCheck))
+                return;
             var fileInfo = new FileInfo(localPath);
             if (fileInfo.Exists && fileInfo.Length != 0)
             {
