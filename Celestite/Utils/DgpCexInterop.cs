@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using ZeroLog;
@@ -223,4 +224,77 @@ namespace Celestite.Utils
         [DllImport("kernel32", SetLastError = true, CharSet = CharSet.Ansi)]
         private static extern IntPtr GetProcAddress(IntPtr module, string name);
     }
-}
+
+        /// <summary>
+        /// 完整 cex 登录：DgpLogin → 宽容解析（snake/camel、header/body 嵌套、id_token JWT、
+        /// DgpGetUserInfo 兜底）→ 返回 (accessToken, userId, refreshToken)。
+        /// 任一关键项缺失返回 null。
+        /// </summary>
+        public static CexLoginResult? LoginWithSession(string email, string password)
+        {
+            if (!EnsureLoaded()) return null;
+            var raw = Login(email, password);
+            if (string.IsNullOrEmpty(raw)) return null;
+            using var doc = System.Text.Json.JsonDocument.Parse(raw);
+            var root = doc.RootElement;
+            var roots = new List<System.Text.Json.JsonElement> { root };
+            if (root.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                if (root.TryGetProperty("body", out var bodyEl)) roots.Add(bodyEl);
+                if (root.TryGetProperty("data", out var dataEl)) roots.Add(dataEl);
+            }
+            string? Pick(System.Text.Json.JsonElement el, string snake, string camel)
+            {
+                if (el.ValueKind != System.Text.Json.JsonValueKind.Object) return null;
+                if (el.TryGetProperty(snake, out var v1) && v1.ValueKind == System.Text.Json.JsonValueKind.String) return v1.GetString();
+                if (el.TryGetProperty(camel, out var v2) && v2.ValueKind == System.Text.Json.JsonValueKind.String) return v2.GetString();
+                return null;
+            }
+            string? at = null, idt = null, rt = null, uid = null;
+            foreach (var r in roots)
+            {
+                at ??= Pick(r, "access_token", "accessToken");
+                idt ??= Pick(r, "id_token", "idToken");
+                rt ??= Pick(r, "refresh_token", "refreshToken");
+                uid ??= Pick(r, "user_id", "userId");
+            }
+            if (uid == null)
+            {
+                var infoRaw = GetUserInfo();
+                if (!string.IsNullOrEmpty(infoRaw))
+                {
+                    using var idoc = System.Text.Json.JsonDocument.Parse(infoRaw);
+                    var iroot = idoc.RootElement;
+                    var idata = iroot;
+                    if (iroot.TryGetProperty("data", out var d) && d.ValueKind == System.Text.Json.JsonValueKind.Object) idata = d;
+                    foreach (var name in new[] { "user_id", "userId", "open_id", "openId" })
+                        if (idata.ValueKind == System.Text.Json.JsonValueKind.Object && idata.TryGetProperty(name, out var v) && v.ValueKind == System.Text.Json.JsonValueKind.String)
+                        { uid = v.GetString(); break; }
+                }
+            }
+            if (uid == null && idt != null)
+            {
+                try
+                {
+                    var parts = idt.Split('.');
+                    if (parts.Length >= 2)
+                    {
+                        var pad = parts[1].Length % 4 == 0 ? parts[1] : parts[1] + new string('=', 4 - parts[1].Length % 4);
+                        var payload = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(pad.Replace('-', '+').Replace('_', '/')));
+                        using var pdoc = System.Text.Json.JsonDocument.Parse(payload);
+                        if (pdoc.RootElement.TryGetProperty("user_id", out var u)) uid = u.GetString();
+                    }
+                }
+                catch { /* JWT 解析失败忽略 */ }
+            }
+            if (string.IsNullOrEmpty(at) || string.IsNullOrEmpty(uid)) return null;
+            return new CexLoginResult { AccessToken = at, UserId = uid, RefreshToken = rt ?? string.Empty };
+        }
+
+        public sealed class CexLoginResult
+        {
+            public string AccessToken { get; set; } = string.Empty;
+            public string UserId { get; set; } = string.Empty;
+            public string RefreshToken { get; set; } = string.Empty;
+        }
+    }

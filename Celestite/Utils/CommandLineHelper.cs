@@ -185,6 +185,23 @@ namespace Celestite.Utils
             if (!string.IsNullOrEmpty(launchCommandLine.Username) && !string.IsNullOrEmpty(launchCommandLine.Password))
             {
                 var login = await DmmOpenApiHelper.Login(launchCommandLine.Username, launchCommandLine.Password);
+                if (login.Failed && login.Error?.Code == "E210002")
+                {
+                    // DMM 已作废旧 Basic 凭据：走 cex.dll（DMMGamePlayer Go 网络层）同协议登录
+                    var cex = DgpCexInterop.LoginWithSession(launchCommandLine.Username, launchCommandLine.Password);
+                    if (cex == null)
+                        return false;
+                    DmmOpenApiHelper.UpdateAccessToken(cex.AccessToken);
+                    if (!string.IsNullOrEmpty(cex.RefreshToken))
+                        DmmOpenApiHelper.UpdateRefreshToken(cex.RefreshToken);
+                    var issueSessionId = await DmmOpenApiHelper.IssueSessionId(cex.UserId);
+                    if (issueSessionId.Failed)
+                        return false;
+                    DmmGamePlayerApiHelper.SetUserCookies(issueSessionId.Value.SecureId, issueSessionId.Value.UniqueId);
+                    DmmGamePlayerApiHelper.SetAgeCheckDone();
+                    Console.WriteLine("Login succeeded via DMMGamePlayer protocol.");
+                    return true;
+                }
                 if (login.Failed)
                     return false;
                 var accessToken = await DmmOpenApiHelper.ExchangeAccessToken(login.Value.AccessToken);
