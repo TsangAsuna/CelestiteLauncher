@@ -193,7 +193,8 @@ namespace Celestite.ViewModels.Dialogs
 
                 Progress = (double)count / total * 100;
                 StatusMessage = Cysharp.Text.ZString.Format("{0} ({1}/{2})", Localization.MigrateCopyingFiles, count, total);
-                await UniTask.Yield(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                await UniTask.Yield();
             }
         }
     }

@@ -116,7 +116,7 @@ namespace Celestite.ViewModels.Dialogs
             foreach (var item in selected)
             {
                 StatusMessage = ZString.Format(Localization.AutoDetectAdding, item.Title);
-                var ok = await DmmGameScanner.AddDetectedGameToCelestiteAsync(item.ProductId, item.GameType);
+                var ok = await DmmGameScanner.AddDetectedGameToCelestiteAsync(item.ProductId, item.Game.GameType);
                 if (ok) successCount++;
             }
 

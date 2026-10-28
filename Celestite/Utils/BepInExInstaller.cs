@@ -58,15 +58,16 @@ namespace Celestite.Utils
                 var tagName = doc.RootElement.GetProperty("tag_name").GetString() ?? string.Empty;
                 var assets = doc.RootElement.GetProperty("assets").EnumerateArray();
 
-                var assetInfos = assets
-                    .Where(a => a.TryGetProperty("name", out var nameEl) && a.TryGetProperty("browser_download_url", out var urlEl))
-                    .Select(a => new BepInExAssetInfo
-                    {
-                        Name = nameEl.GetString() ?? string.Empty,
-                        DownloadUrl = urlEl.GetString() ?? string.Empty,
-                        Size = a.TryGetProperty("size", out var sizeEl) ? sizeEl.GetInt64() : 0
-                    })
-                    .ToList();
+                var assetInfos = new List<BepInExAssetInfo>();
+                foreach (var a in assets)
+                {
+                    if (!a.TryGetProperty("name", out var nameEl)) continue;
+                    if (!a.TryGetProperty("browser_download_url", out var urlEl)) continue;
+                    var name = nameEl.GetString() ?? string.Empty;
+                    var downloadUrl = urlEl.GetString() ?? string.Empty;
+                    var size = a.TryGetProperty("size", out var sizeEl) ? sizeEl.GetInt64() : 0;
+                    assetInfos.Add(new BepInExAssetInfo(name, downloadUrl, size));
+                }
 
                 return new BepInExReleaseInfo(tagName, assetInfos);
             }

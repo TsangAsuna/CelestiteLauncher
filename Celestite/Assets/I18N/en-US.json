@@ -266,6 +266,7 @@
   "BepInExInstalling": "Installing BepInEx...",
   "BepInExInstalled": "BepInEx installed",
   "BepInExInstallFailed": "BepInEx installation failed",
+  "BepInExInstallSuccess": "BepInEx installed successfully",
 
   "AutoDetectTitle": "Auto-detect DMM Games",
   "AutoDetectDescription": "Scan DMMGamePlayer locally installed games that are not yet tracked by Celestite, and add them to the game list.",
@@ -294,5 +295,6 @@
   "MigrateSourcePathInvalid": "Source game directory is invalid",
   "MigrateTargetPathRequired": "Please select a target folder",
   "MigrateSamePathError": "Source directory and target directory cannot be the same",
-  "MigrateCancelButton": "Cancel migration"
+  "MigrateCancelButton": "Cancel migration",
+  "MigrateCancelled": "Migration cancelled"
 }

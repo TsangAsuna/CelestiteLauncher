@@ -266,6 +266,7 @@
   "BepInExInstalling": "正在安装 BepInEx...",
   "BepInExInstalled": "BepInEx 已安装",
   "BepInExInstallFailed": "BepInEx 安装失败",
+  "BepInExInstallSuccess": "BepInEx 安装成功",
   "AutoDetectTitle": "自动识别 DMM 游戏",
   "AutoDetectDescription": "扫描 DMMGamePlayer 本地已安装但尚未被 Celestite 追踪的游戏，并将其添加到游戏列表。",
   "AutoDetectDmmGames": "自动识别 DMM 游戏",
@@ -293,5 +294,6 @@
   "MigrateSourcePathInvalid": "源游戏目录无效",
   "MigrateTargetPathRequired": "请选择目标文件夹",
   "MigrateSamePathError": "源目录和目标目录不能相同",
-  "MigrateCancelButton": "取消迁移"
+  "MigrateCancelButton": "取消迁移",
+  "MigrateCancelled": "迁移已取消"
 }

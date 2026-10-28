@@ -19,6 +19,8 @@ namespace Celestite.Utils
     /// </summary>
     public static class DmmGameScanner
     {
+        private static readonly ZeroLog.Log Logger = ZeroLog.LogManager.GetLogger("DmmGameScanner");
+
         // 常见 DMMGamePlayer / FANZA 游戏目录位置
         private static readonly string[] DefaultScanRoots =
         {
