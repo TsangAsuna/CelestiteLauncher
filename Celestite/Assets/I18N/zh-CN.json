@@ -261,6 +261,11 @@
   "SafeFanzaIconDesc": "※ 这项功能会在当游戏或任务列表中有来自FANZA的游戏时模糊化游戏图标。",
   "ForceSkipFileCheck": "跳过文件检查",
   "ForceSkipFileCheckDesc": "启用后不再校验游戏文件完整性，BepInEx 等插件文件不会被下载器覆盖。",
+  "BepInExInstall": "安装 BepInEx",
+  "BepInExInstallDesc": "自动下载并安装 BepInEx 插件框架到游戏目录，支持 MOD 加载。",
+  "BepInExInstalling": "正在安装 BepInEx...",
+  "BepInExInstalled": "BepInEx 已安装",
+  "BepInExInstallFailed": "BepInEx 安装失败",
 
   "AutoDetectTitle": "自动识别 DMM 游戏",
   "AutoDetectDescription": "扫描 DMMGamePlayer 本地已安装但尚未被 Celestite 追踪的游戏，并将其添加到游戏列表。",

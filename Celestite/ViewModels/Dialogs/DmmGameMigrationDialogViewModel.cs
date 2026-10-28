@@ -30,8 +30,10 @@ namespace Celestite.ViewModels.Dialogs
         [ObservableProperty] private string _statusMessage = string.Empty;
         [ObservableProperty] private double _progress;
         [ObservableProperty] private bool _deleteSourceAfterMigration;
+        [ObservableProperty] private bool _isCancellationRequested;
 
         private DmmGameCnfContent? _content;
+        private CancellationTokenSource? _migrationCts;
 
         public DmmGameMigrationDialogViewModel(MyGame gameData)
         {
@@ -45,7 +47,7 @@ namespace Celestite.ViewModels.Dialogs
             // 默认目标路径：优先 F:\DMMDownload（用户自定义下载目录），其次当前路径的父目录
             var fDriveDownload = @"F:\DMMDownload";
             var folderName = Path.GetFileName(CurrentGamePath);
-            if (Directory.Exists(fDriveDownload) || DriveInfo.GetDrives().Any(d => d.Name == @"F:\"))
+            if (Directory.Exists(fDriveDownload))
             {
                 TargetGamePath = Path.Combine(fDriveDownload, folderName ?? string.Empty);
             }
@@ -99,13 +101,23 @@ namespace Celestite.ViewModels.Dialogs
                 return;
             }
 
+            // 创建取消令牌源
+            _migrationCts = new CancellationTokenSource();
+            _isCancellationRequested = false;
+
             _isBusy = true;
             Progress = 0;
             StatusMessage = Localization.MigrateCopyingFiles;
 
             try
             {
-                await CopyDirectoryAsync(currentFull, targetFull);
+                await CopyDirectoryAsync(currentFull, targetFull, _migrationCts.Token);
+
+                if (_isCancellationRequested)
+                {
+                    StatusMessage = Localization.MigrateCancelled;
+                    return;
+                }
 
                 // 更新 dmmgame.cnf 中的路径
                 if (_content != null)
@@ -136,6 +148,10 @@ namespace Celestite.ViewModels.Dialogs
                     }
                 }
             }
+            catch (OperationCanceledException)
+            {
+                StatusMessage = Localization.MigrateCancelled;
+            }
             catch (Exception ex)
             {
                 Logger.Error($"Game migration failed: {ex.Message}");
@@ -144,7 +160,16 @@ namespace Celestite.ViewModels.Dialogs
             finally
             {
                 _isBusy = false;
+                _migrationCts?.Dispose();
+                _migrationCts = null;
             }
+        }
+
+        [RelayCommand]
+        private void CancelMigration()
+        {
+            _isCancellationRequested = true;
+            _migrationCts?.Cancel();
         }
 
         private async UniTask CopyDirectoryAsync(string sourceDir, string targetDir)

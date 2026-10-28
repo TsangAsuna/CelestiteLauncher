@@ -37,6 +37,11 @@ namespace Celestite.ViewModels.Dialogs
         [ObservableProperty] private bool _contentInstalled;
         private DmmGameCnfContent? _content;
 
+        [ObservableProperty] private bool _isBepInExBusy;
+        [ObservableProperty] private string _bepInExStatus = string.Empty;
+        [ObservableProperty] private bool _bepInExInstalled;
+        [ObservableProperty] private double _bepInExProgress;
+
         public GameSettingsDialogViewModel(MyGame gameData)
         {
             GameData = gameData;
@@ -49,6 +54,65 @@ namespace Celestite.ViewModels.Dialogs
             ExtraCommandLine = ConfigUtils.GetGameSettingsCommandLine(GameData.ProductId);
             ForceSkipFileCheck = ConfigUtils.GetGameSettingsForceSkipFileCheck(GameData.ProductId);
             ForcePin = ConfigUtils.GetGameSettingsForcePin(GameData.ProductId);
+
+            // 检测 BepInEx 是否已安装
+            CheckBepInExInstalled();
+        }
+
+        private void CheckBepInExInstalled()
+        {
+            if (!ConfigUtils.TryGetContent(GameData.ProductId, GameData.Type, out var content))
+                return;
+            var gameDir = content.Detail.Path;
+            if (string.IsNullOrEmpty(gameDir) || !Directory.Exists(gameDir)) return;
+
+            var bepinexDir = Path.Combine(gameDir, "BepInEx");
+            var doorstopConfig = Path.Combine(gameDir, "doorstop_config.ini");
+            var winhttpDll = Path.Combine(gameDir, "winhttp.dll");
+            BepInExInstalled = Directory.Exists(bepinexDir) || File.Exists(doorstopConfig) || File.Exists(winhttpDll);
+        }
+
+        [RelayCommand]
+        private async Task InstallBepInEx()
+        {
+            if (!ContentInstalled) return;
+            if (!ConfigUtils.TryGetContent(GameData.ProductId, GameData.Type, out var content))
+                return;
+            var gameDir = content.Detail.Path;
+            if (string.IsNullOrEmpty(gameDir) || !Directory.Exists(gameDir)) return;
+
+            _isBepInExBusy = true;
+            BepInExProgress = 0;
+            BepInExStatus = Localization.BepInExInstalling;
+
+            try
+            {
+                BepInExProgress = 30;
+                var success = await BepInExInstaller.InstallAsync(gameDir);
+                BepInExProgress = 100;
+                if (success)
+                {
+                    BepInExInstalled = true;
+                    BepInExStatus = Localization.BepInExInstalled;
+                    NotificationHelper.Success(Localization.BepInExInstallSuccess);
+                }
+                else
+                {
+                    BepInExStatus = Localization.BepInExInstallFailed;
+                    NotificationHelper.Error(Localization.BepInExInstallFailed);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"BepInEx install failed: {ex.Message}");
+                BepInExStatus = Localization.BepInExInstallFailed;
+                NotificationHelper.Error(Localization.BepInExInstallFailed);
+            }
+            finally
+            {
+                _isBepInExBusy = false;
+                BepInExProgress = 0;
+            }
         }
 
         public bool IsContentInstalled() => ConfigUtils.TryGetContent(GameData.ProductId, GameData.Type, out _content);

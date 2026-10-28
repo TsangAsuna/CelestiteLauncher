@@ -261,6 +261,11 @@
   "SafeFanzaIconDesc": "※ This feature will blur the game icons when there are games from FANZA in the game or mission list.",
   "ForceSkipFileCheck": "Skip file check",
   "ForceSkipFileCheckDesc": "When enabled, game file integrity is not checked and BepInEx plugin files will not be overwritten by the downloader.",
+  "BepInExInstall": "Install BepInEx",
+  "BepInExInstallDesc": "Automatically download and install the BepInEx plugin framework to the game directory for MOD support.",
+  "BepInExInstalling": "Installing BepInEx...",
+  "BepInExInstalled": "BepInEx installed",
+  "BepInExInstallFailed": "BepInEx installation failed",
 
   "AutoDetectTitle": "Auto-detect DMM Games",
   "AutoDetectDescription": "Scan DMMGamePlayer locally installed games that are not yet tracked by Celestite, and add them to the game list.",

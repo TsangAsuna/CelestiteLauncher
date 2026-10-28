@@ -184,6 +184,26 @@
 			</fluent:SettingsExpander.Footer>
 		</fluent:SettingsExpander>
 			<fluent:SettingsExpander
+	            IconSource="Plugin"
+				IsVisible="{Binding IsCl}"
+	            Header="{x:Static locale:Localization.BepInExInstall}"
+	            Description="{Binding BepInExStatus}"
+            >
+			<fluent:SettingsExpander.Footer>
+				<StackPanel Orientation="Horizontal" Spacing="8">
+					<Button Content="{x:Static locale:Localization.BepInExInstall}"
+						Command="{Binding InstallBepInExCommand}"
+						IsEnabled="{Binding !IsBepInExBusy}">
+					</Button>
+					<ProgressBar Minimum="0" Maximum="100" Width="120"
+						Value="{Binding BepInExProgress, Mode=OneWay}"
+						IsIndeterminate="{Binding IsBepInExBusy}">
+					</ProgressBar>
+				</StackPanel>
+			</fluent:SettingsExpander.Footer>
+		</fluent:SettingsExpander>
+
+			<fluent:SettingsExpander
 	            IconSource="DocumentOnePage"
 				IsVisible="{Binding IsCl}"
 	            Header="{x:Static locale:Localization.LocateDownloadedGameExe}"

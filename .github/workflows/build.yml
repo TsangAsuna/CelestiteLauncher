@@ -22,9 +22,6 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore workloads
-        run: dotnet workload update
-
       - name: Build (Release)
         run: dotnet build Celestite.Desktop/Celestite.Desktop.csproj -c Release
 
@@ -53,9 +50,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-
-      - name: Restore workloads
-        run: dotnet workload update
 
       - name: Build (Release)
         run: dotnet build Celestite.Desktop/Celestite.Desktop.csproj -c Release

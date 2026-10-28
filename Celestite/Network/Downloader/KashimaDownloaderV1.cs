@@ -52,9 +52,7 @@ namespace Celestite.Network.Downloader
             "BepInEx\\",
             // BepInEx 配置文件（游戏根目录）
             "doorstop_config.ini",
-            "doorstop_config.ini",
             // 代理 DLL（BepInEx 依赖）
-            "winhttp.dll",
             "winhttp.dll",
             // 启动器入口
             "doorstop.x64.dll",
