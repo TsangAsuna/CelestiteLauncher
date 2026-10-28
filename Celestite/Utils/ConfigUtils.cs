@@ -89,13 +89,23 @@ namespace Celestite.Utils
                 var copyDir = Path.Combine(CelestiteAppConfigFolder, "dgp_cookies_copy");
                 Directory.CreateDirectory(copyDir);
                 var copyPath = Path.Combine(copyDir, "Cookies");
-                File.Copy(cookiesPath, copyPath, overwrite: true);
+                // DMMGamePlayer 运行时独占打开 Cookies，File.Copy 会失败；
+                // 流式复制并以 FileShare.ReadWrite 打开源，绕过锁
+                using (var src = new FileStream(cookiesPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                using (var dst = new FileStream(copyPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                    src.CopyTo(dst);
                 var journal = cookiesPath + "-journal";
                 var copyJournal = copyPath + "-journal";
-                if (File.Exists(journal))
-                    File.Copy(journal, copyJournal, overwrite: true);
-                else if (File.Exists(copyJournal))
-                    File.Delete(copyJournal);
+                try
+                {
+                    using (var sj = new FileStream(journal, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                    using (var dj = new FileStream(copyJournal, FileMode.Create, FileAccess.Write, FileShare.None))
+                        sj.CopyTo(dj);
+                }
+                catch
+                {
+                    if (File.Exists(copyJournal)) File.Delete(copyJournal);
+                }
                 return copyPath;
             }
             catch (Exception ex)
