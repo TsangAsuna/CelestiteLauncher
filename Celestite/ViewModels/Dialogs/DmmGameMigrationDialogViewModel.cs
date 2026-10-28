@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -172,7 +173,7 @@ namespace Celestite.ViewModels.Dialogs
             _migrationCts?.Cancel();
         }
 
-        private async UniTask CopyDirectoryAsync(string sourceDir, string targetDir)
+        private async UniTask CopyDirectoryAsync(string sourceDir, string targetDir, CancellationToken cancellationToken)
         {
             Directory.CreateDirectory(targetDir);
 
@@ -182,6 +183,8 @@ namespace Celestite.ViewModels.Dialogs
 
             foreach (var file in files)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 count++;
                 var relativePath = Path.GetRelativePath(sourceDir, file);
                 var destFile = Path.Combine(targetDir, relativePath);
@@ -190,7 +193,7 @@ namespace Celestite.ViewModels.Dialogs
 
                 Progress = (double)count / total * 100;
                 StatusMessage = Cysharp.Text.ZString.Format("{0} ({1}/{2})", Localization.MigrateCopyingFiles, count, total);
-                await UniTask.Yield();
+                await UniTask.Yield(cancellationToken);
             }
         }
     }

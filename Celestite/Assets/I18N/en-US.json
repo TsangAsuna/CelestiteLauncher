@@ -293,5 +293,6 @@
   "MigrateFailed": "Migration failed",
   "MigrateSourcePathInvalid": "Source game directory is invalid",
   "MigrateTargetPathRequired": "Please select a target folder",
-  "MigrateSamePathError": "Source directory and target directory cannot be the same"
+  "MigrateSamePathError": "Source directory and target directory cannot be the same",
+  "MigrateCancelButton": "Cancel migration"
 }

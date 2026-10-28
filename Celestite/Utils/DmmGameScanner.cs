@@ -89,9 +89,11 @@ namespace Celestite.Utils
         /// 递归扫描目录树，寻找可能的 DMM 游戏安装文件夹
         /// 判断依据：文件夹名包含 DMM 游戏 ID 特征，或包含常见游戏启动器文件
         /// </summary>
-        private static async UniTask ScanDirectoryTreeAsync(string root, HashSet<(string, TApiGameType)> trackedSet, List<DetectedDmmGame> result)
+        private static async UniTask ScanDirectoryTreeAsync(string root, HashSet<(string, TApiGameType)> trackedSet, List<DetectedDmmGame> result, int depth = 0)
         {
-            // 只扫描一层子目录，避免过深遍历
+            // 最多扫描 3 层，避免过深遍历
+            if (depth > 3) return;
+
             string[] dirs;
             try
             {
@@ -112,15 +114,38 @@ namespace Celestite.Utils
 
                 // 检查是否看起来像 DMM 游戏安装目录
                 bool looksLikeGame = IsLikelyDmmGameDir(dir, dirName);
-                if (!looksLikeGame) continue;
+                if (!looksLikeGame)
+                {
+                    // 不是游戏目录，递归进入子目录继续扫描
+                    await ScanDirectoryTreeAsync(dir, trackedSet, result, depth + 1);
+                    continue;
+                }
 
-                // 尝试从目录名推断 ProductId（DMM 游戏目录名通常就是 app_xxxxxx 或游戏英文 ID）
+                // 尝试从目录名推断 ProductId
                 var candidateId = ExtractPossibleProductId(dirName);
-                if (string.IsNullOrEmpty(candidateId)) continue;
+                if (string.IsNullOrEmpty(candidateId))
+                {
+                    // 目录名不可用，尝试递归子目录
+                    await ScanDirectoryTreeAsync(dir, trackedSet, result, depth + 1);
+                    continue;
+                }
 
                 // 避免重复
                 if (result.Any(x => x.ProductId.Equals(candidateId, StringComparison.OrdinalIgnoreCase)))
                     continue;
+
+                // 尝试从游戏目录中读取更准确的 ProductId（如 product_id.txt）
+                var productIdFile = Path.Combine(dir, "product_id.txt");
+                if (File.Exists(productIdFile))
+                {
+                    try
+                    {
+                        var fileId = File.ReadAllText(productIdFile).Trim();
+                        if (!string.IsNullOrEmpty(fileId))
+                            candidateId = fileId;
+                    }
+                    catch { }
+                }
 
                 result.Add(new DetectedDmmGame
                 {

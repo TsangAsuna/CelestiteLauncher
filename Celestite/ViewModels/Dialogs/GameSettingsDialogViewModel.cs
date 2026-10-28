@@ -55,11 +55,11 @@ namespace Celestite.ViewModels.Dialogs
             ForceSkipFileCheck = ConfigUtils.GetGameSettingsForceSkipFileCheck(GameData.ProductId);
             ForcePin = ConfigUtils.GetGameSettingsForcePin(GameData.ProductId);
 
-            // 检测 BepInEx 是否已安装
-            CheckBepInExInstalled();
+            // 检测 BepInEx 是否已安装（异步，避免阻塞 UI 线程）
+            _ = CheckBepInExInstalledAsync();
         }
 
-        private void CheckBepInExInstalled()
+        private async UniTask CheckBepInExInstalledAsync()
         {
             if (!ConfigUtils.TryGetContent(GameData.ProductId, GameData.Type, out var content))
                 return;
@@ -89,15 +89,22 @@ namespace Celestite.ViewModels.Dialogs
             {
                 BepInExProgress = 30;
                 var success = await BepInExInstaller.InstallAsync(gameDir);
-                BepInExProgress = 100;
                 if (success)
                 {
+                    BepInExProgress = 100;
                     BepInExInstalled = true;
                     BepInExStatus = Localization.BepInExInstalled;
+                    // 自动启用 ForceSkipFileCheck 以保护 BepInEx 文件不被下载器覆盖
+                    if (!ForceSkipFileCheck)
+                    {
+                        ForceSkipFileCheck = true;
+                        ConfigUtils.UpdateGameSettingsForceSkipCheck(GameData.ProductId, true);
+                    }
                     NotificationHelper.Success(Localization.BepInExInstallSuccess);
                 }
                 else
                 {
+                    BepInExProgress = 0;
                     BepInExStatus = Localization.BepInExInstallFailed;
                     NotificationHelper.Error(Localization.BepInExInstallFailed);
                 }
@@ -105,13 +112,13 @@ namespace Celestite.ViewModels.Dialogs
             catch (Exception ex)
             {
                 Logger.Error($"BepInEx install failed: {ex.Message}");
+                BepInExProgress = 0;
                 BepInExStatus = Localization.BepInExInstallFailed;
                 NotificationHelper.Error(Localization.BepInExInstallFailed);
             }
             finally
             {
                 _isBepInExBusy = false;
-                BepInExProgress = 0;
             }
         }
 
