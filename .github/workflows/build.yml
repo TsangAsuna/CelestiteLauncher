@@ -23,10 +23,10 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Build (Release)
-        run: dotnet build Celestite.Desktop/Celestite.Desktop.csproj -c Release
+        run: dotnet build Celestite.Desktop/Celestite.Desktop.csproj -c Release -p:NoWarn="CA2252;CA1416" -p:EnablePreviewFeatures=true
 
       - name: Publish (win-x64)
-        run: dotnet publish Celestite.Desktop/Celestite.Desktop.csproj -c Release -r win-x64 --self-contained false -o ./publish/windows
+        run: dotnet publish Celestite.Desktop/Celestite.Desktop.csproj -c Release -r win-x64 --self-contained false -p:NoWarn="CA2252;CA1416" -p:EnablePreviewFeatures=true -o ./publish/windows
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@v4
@@ -52,10 +52,10 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Build (Release)
-        run: dotnet build Celestite.Desktop/Celestite.Desktop.csproj -c Release
+        run: dotnet build Celestite.Desktop/Celestite.Desktop.csproj -c Release -p:NoWarn="CA2252;CA1416" -p:EnablePreviewFeatures=true
 
       - name: Publish (linux-x64)
-        run: dotnet publish Celestite.Desktop/Celestite.Desktop.csproj -c Release -r linux-x64 --self-contained false -o ./publish/linux
+        run: dotnet publish Celestite.Desktop/Celestite.Desktop.csproj -c Release -r linux-x64 --self-contained false -p:NoWarn="CA2252;CA1416" -p:EnablePreviewFeatures=true -o ./publish/linux
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
