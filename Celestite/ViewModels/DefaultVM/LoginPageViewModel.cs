@@ -354,7 +354,9 @@ namespace Celestite.ViewModels.DefaultVM
                 @"C:\Program Files\DMMGamePlayer\DMMGamePlayer.exe",
                 @"C:\Program Files (x86)\DMMGamePlayer\DMMGamePlayer.exe",
             ];
-            return defaults.FirstOrDefault(File.Exists);
+            foreach (var d in defaults)
+                if (File.Exists(d)) return d;
+            return null;
         }
 
         /// <summary>
